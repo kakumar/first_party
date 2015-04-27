@@ -17,16 +17,11 @@ var regex = new RegExp('('+blacklist.join("|")+')','ig')
 var server = http.createServer(function (req, res) {
 
   var uri = url.parse(req.url, true);
-  res.setHeader('Content-Type', 'textplain');
-  res.writeHead(200);
+  res.writeHead(200, {"Content-Type": "application/json"});
   console.log(uri.query.test_url);
-  console.log(uri.query.script);
-  var input_data = uri.query.test_url;
-  if(uri.query.script){
-	input_data = uri.query.script;
-  }
-  wpt.runTest(input_data, {
-
+  var test_url = uri.query.test_url;
+  wpt.runTest(test_url, {
+        label: "ProntoX-analyze",
   	firstViewOnly: true,
 	location: 'us-east-1:Chrome',
 	ignoreSSL:true,
@@ -42,26 +37,20 @@ var server = http.createServer(function (req, res) {
 		   wpt.getTestStatus(init_res.data.testId, function (err, resp_data) {
 			if (!resp_data.data.completeTime) {
 				// polling status (every second)
-				setTimeout(checkStatus, 1000);
+				setTimeout(checkStatus, 1500);
 			} else {
 				var client = request.createClient('http://pronto.insnw.net/');
-				client.get("/domains.php?test="+init_res.data.testId+'&f=json', function(err, resp, body) {
-					fv =body.domains.firstView;
-					// foreach is synchronous
-					fv.forEach(function(obj) {
-					   console.log("Domain "+ obj.domain);
-					   if (uri.query.nobl) {
-						console.log('nobl');
-						res.write(obj.domain+"\n")
-					   } else {
-						if (obj.domain.search(regex) == -1) {
-							console.log('Not Blacklisted');
-							res.write(obj.domain+"\n");
-						} else{
-							console.log('Blacklisted');
-						}
-					   }
-					});
+				client.get("/export.php?run=1&cached=0&bodies=1&pretty=1&test="+init_res.data.testId, function(err, resp, body) {
+					res.write(JSON.stringify(body));
+				//	fv =body.domains.firstView;
+				//	// foreach is synchronous
+				//	fv.forEach(function(obj) {
+				//	   if (uri.query.nobl) {
+				//		res.write(obj.domain+"\n")
+				//	   } else {
+				//		if (obj.domain.search(regex) == -1)  res.write(obj.domain+"\n");
+				//	   }
+				//	});
 					res.end();
 				});
 			}
